@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canvas Centered</title>
+    <style>
+        body {
+            background-color: lightSkyBlue;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            position: relative;
+        }
+        canvas {
+            background-color: black;
+            cursor: pointer;
+        }
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+        }
+        #eccentricityInput {
+            padding: 5px;
+            font-size: 16px;
+        }
+        #submitEccentricityButton {
+            background-color: purple;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 16px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        #lengthDisplay {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: white;
+            padding: 10px;
+            border: 1px solid black;
+            font-family: Arial, sans-serif;
+        }
+        #info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: white;
+            padding: 10px;
+            border: 1px solid black;
+            font-family: Arial, sans-serif;
+        }
+        #pointDisplay {
+            position:absolute;
+            bottom: 10%;
+            left: 50%;
+            transform: translateX(-50%);
+            color: lawngreen;
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            font-family: 'Courier New', Courier, monospace;
+
+        }
+    </style>
+</head>
+<body>
+    <div id="info">Length: <span id="length">0.0</span> cm</div>
+    <canvas id="drawingCanvas" width="800" height="800"></canvas>
+    <div id="controls">
+        <input type="text" id="eccentricityInput" placeholder="Round to Thousandths">
+        <button id="submitEccentricityButton">Submit Eccentricity</button>
+    </div>
+    <div id="pointDisplay">Points: <span id="pointCounter">0</span></div>
+    <script>
+        const canvas = document.getElementById('drawingCanvas');
+        const ctx = canvas.getContext('2d');
+        const lengthDisplay = document.getElementById('lengthDisplay');
+        const infoSpan = document.getElementById('length');
+        const pointCounter = document.getElementById('pointCounter');
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        var majorAxis = canvas.width * 0.8;
+        var minorAxis = canvas.height * 0.4;
+
+        generateNextEllipse();
+
+        var trueEccentricity;
+        let correctEccentricities = 0;
+
+        //mouse control
+        let isDrawing = false;
+        let startX = 0;
+        let startY = 0;
+
+        function drawEllipse(cx,cy,angle){
+
+            trueEccentricity = Math.sqrt(1 - (minorAxis * minorAxis) / (majorAxis * majorAxis));
+            // Calculate foci distance
+            const fociDistance = Math.sqrt((majorAxis * majorAxis) - (minorAxis * minorAxis));
+
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(angle);
+            // Draw ellipse
+            ctx.beginPath();
+            ctx.ellipse(0, 0, majorAxis / 2, minorAxis / 2, 0, 0, 2 * Math.PI);
+            ctx.strokeStyle = 'white';
+            ctx.stroke();
+            
+            // Draw foci
+            drawCross(0 - fociDistance / 2, 0); // Left foci
+            drawCross(0 + fociDistance / 2, 0); // Right foci
+            ctx.restore();
+        }
+        
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            startX = e.offsetX;
+            startY = e.offsetY;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDrawing) {
+                const endX = e.offsetX;
+                const endY = e.offsetY;
+                clearCanvas();
+                drawLine(startX, startY, endX, endY);
+                updateLengthDisplay(startX, startY, endX, endY);
+            }
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            if (isDrawing) {
+                const endX = e.offsetX;
+                const endY = e.offsetY;
+                drawLine(startX, startY, endX, endY);
+                updateLengthDisplay(startX, startY, endX, endY);
+                isDrawing = false;
+            }
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            if (isDrawing) {
+                isDrawing = false;
+                clearCanvas();
+            }
+        });
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            drawEllipse(centerX,centerY,0);
+        }
+
+        function drawLine(x1, y1, x2, y2) {
+            ctx.strokeStyle = 'yellow'; // Set line color to white
+            ctx.lineWidth = 2; // Set line width
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+
+            // Draw short perpendicular line segments at start and end positions
+            drawPerpendicularLine(x1, y1, x2, y2, 10);
+            drawPerpendicularLine(x2, y2, x1, y1, 10);
+            drawPerpendicularLine(x1, y1, x2, y2, -10);
+            drawPerpendicularLine(x2, y2, x1, y1, -10);
+        }
+
+        function drawPerpendicularLine(x1, y1, x2, y2, length) {
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const angle = Math.atan2(dy, dx);
+            const perpendicularAngle = angle + Math.PI / 2;
+            const x3 = x2 + length * Math.cos(perpendicularAngle);
+            const y3 = y2 + length * Math.sin(perpendicularAngle);
+            ctx.beginPath();
+            ctx.moveTo(x2, y2);
+            ctx.lineTo(x3, y3);
+            ctx.stroke();
+        }
+
+        function drawCross(x, y) {
+                const crossSize = 10;
+                ctx.strokeStyle = 'red';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(x - crossSize / 2, y - crossSize / 2);
+                ctx.lineTo(x + crossSize / 2, y + crossSize / 2);
+                ctx.moveTo(x - crossSize / 2, y + crossSize / 2);
+                ctx.lineTo(x + crossSize / 2, y - crossSize / 2);
+                ctx.stroke();
+            }
+
+        function updateLengthDisplay(x1, y1, x2, y2) {
+            const length = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2)).toFixed(2);
+            const lengthInCm = length / canvas.width * canvas.clientWidth * window.devicePixelRatio * 2.54/100; // Convert pixels to centimeters
+            infoSpan.textContent = lengthInCm.toFixed(1); // Display length with one decimal place
+
+        }
+
+        function generateNextEllipse(){
+            let xy = generateXY();
+            majorAxis = canvas.width * xy.X;
+            minorAxis = canvas.height * xy.Y;
+        }
+
+        function generateXY(){
+            // Generate a random number between 0.3 and 0.8 for X
+            let X = Math.random() * 0.5 + 0.3;
+
+            // Generate a random number between 0.3 and 0.8 for Y
+            let Y = Math.random() * 0.5 + 0.3;
+
+            // Ensure X is greater than or equal to Y
+            if (X < Y) {
+                [X, Y] = [Y, X]; // Swap values if X is less than Y
+            }
+
+            return { X, Y };
+        }
+
+        function animateRotation() {
+            let angle = 0;
+            const start = performance.now();
+
+            function animate(currentTime) {
+                const elapsedTime = currentTime - start;
+                angle = (elapsedTime / 500) * Math.PI; // Adjust speed of rotation here
+                drawEllipse(centerX,centerY,angle);
+                if (angle < 2 * Math.PI) {
+                    requestAnimationFrame(animate);
+                }
+                else{
+                    angle = 2*Math.PI;
+                    generateNextEllipse();
+                    drawEllipse(centerX,centerY,angle);
+
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        function shakeAnimation(callback) {
+            let offset = 0;
+            let direction = 1;
+            const shakeDistance = 20;
+            const start = performance.now();
+
+            function shake(currentTime) {
+                const elapsedTime = currentTime - start;
+                offset += direction * 2; // Adjust the shaking speed
+                if (Math.abs(offset) > shakeDistance) {
+                    direction *= -1;
+                }
+
+                drawEllipse(centerX + offset, centerY, 0);
+
+                if (elapsedTime < 1000) { // Shake for 1 second
+                    requestAnimationFrame(shake);
+                } else {
+                    angle = 2*Math.PI;
+                    drawEllipse(centerX, centerY, 0);
+                }
+            }
+
+            requestAnimationFrame(shake);
+        }
+
+        
+        function handleEccentricitySubmission(){
+            // Get submitted eccentricity value
+            const eccentricityInput = document.getElementById('eccentricityInput').value.trim();
+            const decimalRegex = /^0\.\d{3}$/;
+            // Parse submitted value to check if it's a number
+            if (decimalRegex.test(eccentricityInput)) {
+                const submittedEccentricity = parseFloat(eccentricityInput);
+                
+                // Calculate the true eccentricity of the ellipse
+
+                // Check if the submitted value is a number and matches the true eccentricity
+                if (!isNaN(submittedEccentricity) && Math.abs(submittedEccentricity - trueEccentricity) < 0.01) {
+                    correctEccentricities++;
+                    pointCounter.textContent = correctEccentricities;
+                    // Animate rotation
+                    animateRotation();
+                } else {
+                    shakeAnimation();
+                }
+                console.log("done");
+            } else {
+                alert('Bad input. Enter a value that looks like 0.000');
+            }
+        };
+
+        // Initialize the canvas background to black
+        clearCanvas();
+
+
+
+        const submitButton = document.getElementById('submitEccentricityButton');
+        submitButton.addEventListener('click', handleEccentricitySubmission);
+
+        // Add event listener for the "Enter" key
+        const eccentricityInput = document.getElementById('eccentricityInput');
+        eccentricityInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                handleEccentricitySubmission();
+            }
+        });
+
+    </script>
+</body>
+</html>
