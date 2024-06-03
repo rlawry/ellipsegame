@@ -14,16 +14,20 @@
             margin: 0;
             position: relative;
         }
+        #game{
+            position: relative;
+            width: 800px;
+            height: 800px;
+        }
         canvas {
             background-color: black;
             cursor: pointer;
             user-select: none;
         }
         #controls {
-            position: absolute;
+            position:absolute;
             top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
+            left: 10%;
             text-align: center;
         }
         #eccentricityInput {
@@ -39,15 +43,6 @@
             font-size: 16px;
             border-radius: 5px;
             margin-top: 10px;
-        }
-        #lengthDisplay {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background-color: white;
-            padding: 10px;
-            border: 1px solid black;
-            font-family: Arial, sans-serif;
         }
         #info {
             position: absolute;
@@ -67,22 +62,22 @@
             font-size: 1.5rem;
             margin-bottom: 10px;
             font-family: 'Courier New', Courier, monospace;
-
         }
     </style>
 </head>
 <body>
-    <div id="info">Length: <span id="length">0.0</span> cm</div>
-    <canvas id="drawingCanvas" width="800" height="800"></canvas>
-    <div id="controls">
-        <input type="text" id="eccentricityInput" placeholder="Round to Thousandths">
-        <button id="submitEccentricityButton">Submit Eccentricity</button>
+    <div id="game">
+        <div id="info">Length: <span id="length">0.0</span> cm</div>
+        <canvas id="drawingCanvas" width="800" height="800"></canvas>
+        <div id="controls">
+            <input type="text" id="eccentricityInput" placeholder="Round to Thousandths">
+            <button id="submitEccentricityButton">Submit Eccentricity</button>
+        </div>
+        <div id="pointDisplay">Points: <span id="pointCounter">0</span></div>
     </div>
-    <div id="pointDisplay">Points: <span id="pointCounter">0</span></div>
     <script>
         const canvas = document.getElementById('drawingCanvas');
         const ctx = canvas.getContext('2d');
-        const lengthDisplay = document.getElementById('lengthDisplay');
         const infoSpan = document.getElementById('length');
         const pointCounter = document.getElementById('pointCounter');
         const centerX = canvas.width / 2;
