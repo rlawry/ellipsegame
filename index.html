@@ -99,6 +99,8 @@
         let isDrawing = false;
         let startX = 0;
         let startY = 0;
+        let endX = 0;
+        let endY = 0;
 
         function drawEllipse(cx,cy,angle){
 
@@ -133,9 +135,10 @@
         function draw(event) {
             if (isDrawing) {
                 event.preventDefault();
+                updateLengthDisplay(startX, startY, endX, endY);
                 endX = event.type === 'mousemove' ? event.offsetX : event.touches[0].clientX - canvas.getBoundingClientRect().left;
                 endY = event.type === 'mousemove' ? event.offsetY : event.touches[0].clientY - canvas.getBoundingClientRect().top;
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                clearCanvas();
                 drawLine();
             }
         }
@@ -162,19 +165,23 @@
             drawEllipse(centerX,centerY,0);
         }
 
-        function drawLine(x1, y1, x2, y2) {
-            ctx.strokeStyle = 'yellow'; // Set line color to white
-            ctx.lineWidth = 2; // Set line width
+        function drawLine() {
+            ctx.lineWidth = 2;
+            ctx.translate(0.5,0.5);
             ctx.beginPath();
-            ctx.moveTo(x1, y1);
-            ctx.lineTo(x2, y2);
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(endX, endY);
+            ctx.strokeStyle = 'yellow';
             ctx.stroke();
 
             // Draw short perpendicular line segments at start and end positions
-            drawPerpendicularLine(x1, y1, x2, y2, 10);
-            drawPerpendicularLine(x2, y2, x1, y1, 10);
-            drawPerpendicularLine(x1, y1, x2, y2, -10);
-            drawPerpendicularLine(x2, y2, x1, y1, -10);
+            drawPerpendicularLine(startX, startY, endX, endY, 10);
+            drawPerpendicularLine(endX, endY, startX, startY, 10);
+            drawPerpendicularLine(startX, startY, endX, endY, -10);
+            drawPerpendicularLine(endX, endY, startX, startY, -10);
+
+            updateLengthDisplay(startX, startY, endX, endY);
+            ctx.translate(-0.5,-0.5);
         }
 
         function drawPerpendicularLine(x1, y1, x2, y2, length) {
