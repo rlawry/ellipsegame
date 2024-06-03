@@ -76,6 +76,18 @@
         <div id="pointDisplay">Points: <span id="pointCounter">0</span></div>
     </div>
     <script>
+        class Point {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+            }
+            update(x, y) {
+                this.x = x;
+                this.y = y;
+            }
+        }
+
+
         const canvas = document.getElementById('drawingCanvas');
         const ctx = canvas.getContext('2d');
         const infoSpan = document.getElementById('length');
@@ -84,8 +96,8 @@
         const centerY = canvas.height / 2;
         var majorAxis = canvas.width * 0.8;
         var minorAxis = canvas.height * 0.4;
-
-        generateNextEllipse();
+        var running = false;
+        
 
         var trueEccentricity;
         let correctEccentricities = 0;
@@ -96,6 +108,40 @@
         let startY = 0;
         let endX = 0;
         let endY = 0;
+
+        var gravitationalConstant = 6.67430 * Math.pow(10, -11);
+        var massOfSun = 3988500 * Math.pow(10,24);
+
+        var gmSun = gravitationalConstant * massOfSun;
+        var satellite = new Point();
+
+        var PLANET = {
+            x: null,
+            y: null,
+            Major_Axis: majorAxis/2,
+            Minor_Axis: minorAxis/2,
+            orbitalSpeed: null,
+            orbitalSpeedActual: null,
+            degreeOffset: 180,
+            degrees: -180,
+            gravitationalConstant: gravitationalConstant,
+            MSun: massOfSun,
+            GMSun: massOfSun * gravitationalConstant,
+            c: 156.12494995995996,
+            interval: 1000 / 60,
+            day: 1,
+        };
+
+        console.log(PLANET.MSun + " MSun");
+        console.log(PLANET.GMSun + " GMSun");
+        var a = PLANET.Major_Axis * PLANET.Major_Axis;
+        var b = PLANET.Minor_Axis * PLANET.Minor_Axis;
+        var c = Math.sqrt(a - b);
+        PLANET.c = c;
+
+        var time;
+        var ecc = 0;
+
 
         function drawEllipse(cx,cy,angle){
 
@@ -193,16 +239,16 @@
         }
 
         function drawCross(x, y) {
-                const crossSize = 10;
-                ctx.strokeStyle = 'red';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.moveTo(x - crossSize / 2, y - crossSize / 2);
-                ctx.lineTo(x + crossSize / 2, y + crossSize / 2);
-                ctx.moveTo(x - crossSize / 2, y + crossSize / 2);
-                ctx.lineTo(x + crossSize / 2, y - crossSize / 2);
-                ctx.stroke();
-            }
+            const crossSize = 10;
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x - crossSize / 2, y - crossSize / 2);
+            ctx.lineTo(x + crossSize / 2, y + crossSize / 2);
+            ctx.moveTo(x - crossSize / 2, y + crossSize / 2);
+            ctx.lineTo(x + crossSize / 2, y - crossSize / 2);
+            ctx.stroke();
+        }
 
         function updateLengthDisplay(x1, y1, x2, y2) {
             const length = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2)).toFixed(2);
@@ -214,7 +260,10 @@
         function generateNextEllipse(){
             let xy = generateXY();
             majorAxis = canvas.width * xy.X;
+            console.log(PLANET.Major_Axis)
             minorAxis = canvas.height * xy.Y;
+            PLANET.Major_Axis = majorAxis;
+            PLANET.Minor_Axis = minorAxis;
         }
 
         function generateXY(){
@@ -305,7 +354,7 @@
                 alert('Bad input. Enter a value that looks like 0.000');
             }
         };
-
+        generateNextEllipse();
         // Initialize the canvas background to black
         clearCanvas();
 
@@ -321,6 +370,101 @@
                 handleEccentricitySubmission();
             }
         });
+
+
+
+
+        function updateOrbitalSpeedByEllipse(){
+            
+            PLANET.orbitalSpeed = ((Math.sqrt(((PLANET.gravitationalConstant * (PLANET.MSun)) / (PLANET.Major_Axis * (Math.pow(10, 9)))))) / 1000) * 3600; //Calculate orbital speed in KM/H. Needs radius of planet in METERS!						
+
+        }
+
+        function updateOrbitParameters() {       
+            updateOrbitalSpeedByEllipse();
+            //document.getElementById("eccentricity").innerHTML= "Eccentricity: " + ecc.toFixed(3);
+        }
+
+
+        function updatePLANET() {
+
+            PLANET.orbitalSpeedActual = calculateOrbitalSpeedPLANET(); //Update orbital speed after each frame						
+
+            PLANET.degrees = PLANET.degrees - (((360 / 365.256) * ((PLANET.orbitalSpeedActual / PLANET.orbitalSpeed))));
+
+            PLANET.day++;
+
+            if (roundPLANET(PLANET.day, 0) == roundPLANET(456 / 10 * 9, 0)) {
+                //alert(PLANET.degrees);
+            }
+
+            if (PLANET.degrees < -360 - PLANET.degreeOffset) {
+                PLANET.degrees = 0 - PLANET.degreeOffset;
+                PLANET.day = 1;
+            }
+            updateOrbitParameters();
+
+        }
+
+        function calculateOrbitalSpeedPLANET() {
+
+            var tx = ((PLANET.Major_Axis) * Math.cos(toRadiansPLANET(PLANET.degrees))) + PLANET.c; //C has to be subtracted AFTER the calculation for it to work!!
+            var ty = ((PLANET.Minor_Axis) * Math.sin(toRadiansPLANET(PLANET.degrees)));
+
+            //You can verify these with "Max. orbital velocity" and "Min. orbital velocity" on the NASA Factsheet (muliply by 3600) -->http://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html
+            var speed = ((Math.sqrt((PLANET.GMSun) * ((2 / ((Math.sqrt((Math.pow(tx, 2)) + (Math.pow(ty, 2)))) * (Math.pow(10, 9)))) - (1 / (PLANET.Major_Axis * (Math.pow(10, 9))))))) / 1000) * 3600;
+
+            return speed;
+        }
+
+        function renderPointPLANET() {
+            var x = PLANET.x + c + ((PLANET.Major_Axis) * Math.cos(toRadiansPLANET(PLANET.degrees)));
+            var y = PLANET.y + ((PLANET.Minor_Axis) * Math.sin(toRadiansPLANET(PLANET.degrees)));
+            satellite.update(x, y);
+            drawPlanet(satellite.x,satellite.y);
+        }
+
+        function drawPlanet(x,y){
+            ctx.strokeStyle = "blue";
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.moveTo(0-x-majorAxis/2,0-y-minorAxis/2);
+            const planetDiameter = 4;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(x, y, 4, 0, 2 * Math.PI);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        //#BEGIN USEFUL FUNCTIONS SECTION II
+        function toRadiansPLANET(value) {
+            return value * (Math.PI / 180);
+        }
+
+        function roundPLANET(value, decimals) {
+            return Number(Math.round(value + 'e' + decimals) + 'e-' + decimals);
+        }
+
+        function animatePlanet(){
+            renderPointPLANET();
+            if(running){
+                updatePLANET();
+            }
+            requestAnimationFrame(animatePlanet);
+        }
+
+        document.body.onkeyup = function(e){
+            if(e.keyCode == 32){
+                if(running){running = false;}
+                else if(!running){
+                    running = true;
+                    animatePlanet();
+                }
+            }
+        }
+
+
 
     </script>
 </body>
