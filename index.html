@@ -122,7 +122,7 @@
             Minor_Axis: minorAxis/2,
             orbitalSpeed: null,
             orbitalSpeedActual: null,
-            degreeOffset: 180,
+            degreeOffset: -360,
             degrees: -180,
             gravitationalConstant: gravitationalConstant,
             MSun: massOfSun,
@@ -132,8 +132,6 @@
             day: 1,
         };
 
-        console.log(PLANET.MSun + " MSun");
-        console.log(PLANET.GMSun + " GMSun");
         var a = PLANET.Major_Axis * PLANET.Major_Axis;
         var b = PLANET.Minor_Axis * PLANET.Minor_Axis;
         var c = Math.sqrt(a - b);
@@ -410,21 +408,20 @@
 
             var tx = ((PLANET.Major_Axis) * Math.cos(toRadiansPLANET(PLANET.degrees))) + PLANET.c; //C has to be subtracted AFTER the calculation for it to work!!
             var ty = ((PLANET.Minor_Axis) * Math.sin(toRadiansPLANET(PLANET.degrees)));
-
-            //You can verify these with "Max. orbital velocity" and "Min. orbital velocity" on the NASA Factsheet (muliply by 3600) -->http://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html
-            var speed = ((Math.sqrt((PLANET.GMSun) * ((2 / ((Math.sqrt((Math.pow(tx, 2)) + (Math.pow(ty, 2)))) * (Math.pow(10, 9)))) - (1 / (PLANET.Major_Axis * (Math.pow(10, 9))))))) / 1000) * 3600;
-
+            var speed = ((Math.sqrt((PLANET.GMSun) * ((2 / ((Math.sqrt((Math.pow(tx, 2)) + (Math.pow(ty, 2)))) * (Math.pow(10, 9)))) - (1 / (PLANET.Major_Axis * (Math.pow(10, 9))))))) / 1000) * 3600 - c;
+            infoSpan.innerHTML = speed.toFixed(0);
             return speed;
         }
 
         function renderPointPLANET() {
-            var x = PLANET.x + c + ((PLANET.Major_Axis) * Math.cos(toRadiansPLANET(PLANET.degrees)));
-            var y = PLANET.y + ((PLANET.Minor_Axis) * Math.sin(toRadiansPLANET(PLANET.degrees)));
+            var x = ((PLANET.Major_Axis/2) * Math.cos(toRadiansPLANET(PLANET.degrees)));
+            var y = ((PLANET.Minor_Axis)/2 * Math.sin(toRadiansPLANET(PLANET.degrees)));
             satellite.update(x, y);
             drawPlanet(satellite.x,satellite.y);
         }
 
         function drawPlanet(x,y){
+            ctx.fillStyle = "lightblue";
             ctx.strokeStyle = "blue";
             ctx.save();
             ctx.translate(centerX, centerY);
@@ -434,6 +431,7 @@
             ctx.beginPath();
             ctx.arc(x, y, 4, 0, 2 * Math.PI);
             ctx.stroke();
+            ctx.fill();
             ctx.restore();
         }
 
@@ -446,20 +444,31 @@
             return Number(Math.round(value + 'e' + decimals) + 'e-' + decimals);
         }
 
+        let animationFrameId;
+
         function animatePlanet(){
-            renderPointPLANET();
-            if(running){
+            drawEllipse(centerX, centerY, 0);
+            if(running){  
                 updatePLANET();
+                renderPointPLANET();
             }
-            requestAnimationFrame(animatePlanet);
+            console.log(PLANET.degrees + "°");
+            animationFrameId = requestAnimationFrame(animatePlanet);
         }
 
         document.body.onkeyup = function(e){
             if(e.keyCode == 32){
-                if(running){running = false;}
+                if(running){
+                    running = false;
+                    updatePLANET();
+                    cancelAnimationFrame(animationFrameId)
+                    PLANET.degrees = 0 - PLANET.degreeOffset;
+                    PLANET.day = 1;
+                    updatePLANET();
+                }
                 else if(!running){
                     running = true;
-                    animatePlanet();
+                    animationFrameId = requestAnimationFrame(animatePlanet);
                 }
             }
         }
