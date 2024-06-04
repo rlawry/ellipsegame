@@ -63,6 +63,53 @@
             margin-bottom: 10px;
             font-family: 'Courier New', Courier, monospace;
         }
+        #launchButton {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: purple;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 16px;
+            border-radius: 5px;
+        }
+
+        .tooltip {
+            visibility: hidden;
+            width: 260px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 10%;
+            left: 50%;
+            /*transform: translateX(-50%);*/
+            margin-left: -80px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        /* Tooltip arrow */
+        .tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #555 transparent transparent transparent;
+        }
+        /* Show the tooltip on hover */
+        #launchButton:hover + .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
@@ -74,6 +121,8 @@
             <button id="submitEccentricityButton">Submit Eccentricity</button>
         </div>
         <div id="pointDisplay">Points: <span id="pointCounter">0</span></div>
+        <button id="launchButton">Launch the Satellite</button>
+        <div class="tooltip">Can you tell which focus is empty and at which one there should be a massive object?</div>
     </div>
     <script>
         class Point {
@@ -96,6 +145,7 @@
         const centerY = canvas.height / 2;
         var majorAxis = canvas.width * 0.8;
         var minorAxis = canvas.height * 0.4;
+        console.log("init: " + semiMajorAxis + "smaj, " + semiMinorAxis + "smin");
         var running = false;
         
 
@@ -109,38 +159,102 @@
         let endX = 0;
         let endY = 0;
 
-        var gravitationalConstant = 6.67430 * Math.pow(10, -11);
-        var massOfSun = 3988500 * Math.pow(10,24);
+        var semiMajorAxis = majorAxis/2;             // Semi-major axis (a)
+        var semiMinorAxis = minorAxis/2;             // Semi-minor axis (b)
+        var focusDistance = Math.sqrt(Math.pow(semiMajorAxis, 2) - Math.pow(semiMinorAxis, 2));             // Distance from origin to one focus (c)
+        var gravitationalParameter = 1;      // Gravitational parameter (M*6.67e-11)
+        var orbitalPeriod = 2 * Math.PI * Math.pow(semiMajorAxis, 1.5) / Math.sqrt(gravitationalParameter);  // Orbital period
+        var timeSlice = orbitalPeriod / 500; // A slice of time (dt)
 
-        var gmSun = gravitationalConstant * massOfSun;
-        var satellite = new Point();
+        // Initial conditions
+        var posX = semiMajorAxis;
+        var posY = 0;
+        var velocityX = 0;
+        var velocityY = Math.sqrt(gravitationalParameter * (2 / (semiMajorAxis - focusDistance) - 1 / semiMajorAxis));
+        console.log(velocityY + " velY");
+        // Function to update the position and velocity of the orbiting object
+        function updateOrbit() {
+            window.requestAnimationFrame(updateOrbit); // Schedule the next update
+            ctx.fillStyle = "rgba(0,0,0,0.5)"
+            ctx.fillRect(centerX+posX-1, centerY + posY-1, 6, 6);  // Clear the previous drawing
 
-        var PLANET = {
-            x: null,
-            y: null,
-            Major_Axis: majorAxis/2,
-            Minor_Axis: minorAxis/2,
-            orbitalSpeed: null,
-            orbitalSpeedActual: null,
-            degreeOffset: -360,
-            degrees: -180,
-            gravitationalConstant: gravitationalConstant,
-            MSun: massOfSun,
-            GMSun: massOfSun * gravitationalConstant,
-            c: 156.12494995995996,
-            interval: 1000 / 60,
-            day: 1,
-        };
+            // Runge-Kutta 4th order integration method to calculate the next position and velocity
+            function rk4(x, y, vx, vy, dt) {
+                function acceleration(x, y) {
+                    var r = Math.sqrt(Math.pow(x - focusDistance, 2) + Math.pow(y, 2));
+                    var ax = -gravitationalParameter * (x - focusDistance) / (r * r * r);
+                    var ay = -gravitationalParameter * y / (r * r * r);
+                    return [ax, ay];
+                }
 
-        var a = PLANET.Major_Axis * PLANET.Major_Axis;
-        var b = PLANET.Minor_Axis * PLANET.Minor_Axis;
-        var c = Math.sqrt(a - b);
-        PLANET.c = c;
+                // Calculate k1
+                var [ax1, ay1] = acceleration(x, y);
+                var k1vx = dt * ax1;
+                var k1vy = dt * ay1;
+                var k1x = dt * vx;
+                var k1y = dt * vy;
 
-        var time;
-        var ecc = 0;
+                // Calculate k2
+                var [ax2, ay2] = acceleration(x + 0.5 * k1x, y + 0.5 * k1y);
+                var k2vx = dt * ax2;
+                var k2vy = dt * ay2;
+                var k2x = dt * (vx + 0.5 * k1vx);
+                var k2y = dt * (vy + 0.5 * k1vy);
 
+                // Calculate k3
+                var [ax3, ay3] = acceleration(x + 0.5 * k2x, y + 0.5 * k2y);
+                var k3vx = dt * ax3;
+                var k3vy = dt * ay3;
+                var k3x = dt * (vx + 0.5 * k2vx);
+                var k3y = dt * (vy + 0.5 * k2vy);
 
+                // Calculate k4
+                var [ax4, ay4] = acceleration(x + k3x, y + k3y);
+                var k4vx = dt * ax4;
+                var k4vy = dt * ay4;
+                var k4x = dt * (vx + k3vx);
+                var k4y = dt * (vy + k3vy);
+
+                // Combine to get the new position and velocity
+                var newX = x + (k1x + 2 * k2x + 2 * k3x + k4x) / 6;
+                var newY = y + (k1y + 2 * k2y + 2 * k3y + k4y) / 6;
+                var newVx = vx + (k1vx + 2 * k2vx + 2 * k3vx + k4vx) / 6;
+                var newVy = vy + (k1vy + 2 * k2vy + 2 * k3vy + k4vy) / 6;
+                //console.log(newVy + " velYee");
+                return [newX, newY, newVx, newVy];
+                
+            }
+
+            // Update position and velocity using Runge-Kutta method
+            [posX, posY, velocityX, velocityY] = rk4(posX, posY, velocityX, velocityY, timeSlice);
+            // Draw the new position on the canvas
+            console.log(posX + ", " + posY);
+            //console.log("update: " + semiMajorAxis + "smaj, " + semiMinorAxis + "smin");
+            ctx.fillStyle = generateNextBlue();
+            ctx.fillRect(centerX + posX, centerY + posY, 4, 4);
+        }
+
+        var green = 0;
+        var up = true;
+
+        function generateNextBlue(){
+            if(up){
+                green++;
+                if(green>255){
+                    up = false;
+                    green = 254;
+                }
+            }
+            else if(!up){
+                green--;
+                if(green<0){
+                    up = true;
+                    green = 1;
+                }
+            }
+            return `rgb(230,${green},255)`;
+        }
+        
         function drawEllipse(cx,cy,angle){
 
             trueEccentricity = Math.sqrt(1 - (minorAxis * minorAxis) / (majorAxis * majorAxis));
@@ -258,10 +372,17 @@
         function generateNextEllipse(){
             let xy = generateXY();
             majorAxis = canvas.width * xy.X;
-            console.log(PLANET.Major_Axis)
             minorAxis = canvas.height * xy.Y;
-            PLANET.Major_Axis = majorAxis;
-            PLANET.Minor_Axis = minorAxis;
+            semiMajorAxis = majorAxis/2;             // Semi-major axis (a)
+            semiMinorAxis = minorAxis/2;             // Semi-minor axis (b)
+            focusDistance = Math.sqrt(Math.pow(semiMajorAxis, 2) - Math.pow(semiMinorAxis, 2)); 
+            orbitalPeriod = 2 * Math.PI * Math.pow(semiMajorAxis, 1.5) / Math.sqrt(gravitationalParameter);  // Orbital period
+            timeSlice = orbitalPeriod / 500; // A slice of time (dt) 
+            posX = semiMajorAxis;
+            posY = 0;
+            velocityX = 0;
+            velocityY = Math.sqrt(gravitationalParameter * (2 / (semiMajorAxis - focusDistance) - 1 / semiMajorAxis));
+            //console.log("gen: " + semiMajorAxis + "smaj, " + semiMinorAxis + "smin");
         }
 
         function generateXY(){
@@ -356,8 +477,6 @@
         // Initialize the canvas background to black
         clearCanvas();
 
-
-
         const submitButton = document.getElementById('submitEccentricityButton');
         submitButton.addEventListener('click', handleEccentricitySubmission);
 
@@ -369,109 +488,30 @@
             }
         });
 
-
-
-
-        function updateOrbitalSpeedByEllipse(){
-            
-            PLANET.orbitalSpeed = ((Math.sqrt(((PLANET.gravitationalConstant * (PLANET.MSun)) / (PLANET.Major_Axis * (Math.pow(10, 9)))))) / 1000) * 3600; //Calculate orbital speed in KM/H. Needs radius of planet in METERS!						
-
-        }
-
-        function updateOrbitParameters() {       
-            updateOrbitalSpeedByEllipse();
-            //document.getElementById("eccentricity").innerHTML= "Eccentricity: " + ecc.toFixed(3);
-        }
-
-
-        function updatePLANET() {
-
-            PLANET.orbitalSpeedActual = calculateOrbitalSpeedPLANET(); //Update orbital speed after each frame						
-
-            PLANET.degrees = PLANET.degrees - (((360 / 365.256) * ((PLANET.orbitalSpeedActual / PLANET.orbitalSpeed))));
-
-            PLANET.day++;
-
-            if (roundPLANET(PLANET.day, 0) == roundPLANET(456 / 10 * 9, 0)) {
-                //alert(PLANET.degrees);
-            }
-
-            if (PLANET.degrees < -360 - PLANET.degreeOffset) {
-                PLANET.degrees = 0 - PLANET.degreeOffset;
-                PLANET.day = 1;
-            }
-            updateOrbitParameters();
-
-        }
-
-        function calculateOrbitalSpeedPLANET() {
-
-            var tx = ((PLANET.Major_Axis) * Math.cos(toRadiansPLANET(PLANET.degrees))) + PLANET.c; //C has to be subtracted AFTER the calculation for it to work!!
-            var ty = ((PLANET.Minor_Axis) * Math.sin(toRadiansPLANET(PLANET.degrees)));
-            var speed = ((Math.sqrt((PLANET.GMSun) * ((2 / ((Math.sqrt((Math.pow(tx, 2)) + (Math.pow(ty, 2)))) * (Math.pow(10, 9)))) - (1 / (PLANET.Major_Axis * (Math.pow(10, 9))))))) / 1000) * 3600 - c;
-            infoSpan.innerHTML = speed.toFixed(0);
-            return speed;
-        }
-
-        function renderPointPLANET() {
-            var x = ((PLANET.Major_Axis/2) * Math.cos(toRadiansPLANET(PLANET.degrees)));
-            var y = ((PLANET.Minor_Axis)/2 * Math.sin(toRadiansPLANET(PLANET.degrees)));
-            satellite.update(x, y);
-            drawPlanet(satellite.x,satellite.y);
-        }
-
-        function drawPlanet(x,y){
-            ctx.fillStyle = "lightblue";
-            ctx.strokeStyle = "blue";
-            ctx.save();
-            ctx.translate(centerX, centerY);
-            ctx.moveTo(0-x-majorAxis/2,0-y-minorAxis/2);
-            const planetDiameter = 4;
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(x, y, 4, 0, 2 * Math.PI);
-            ctx.stroke();
-            ctx.fill();
-            ctx.restore();
-        }
-
-        //#BEGIN USEFUL FUNCTIONS SECTION II
-        function toRadiansPLANET(value) {
-            return value * (Math.PI / 180);
-        }
-
-        function roundPLANET(value, decimals) {
-            return Number(Math.round(value + 'e' + decimals) + 'e-' + decimals);
-        }
-
-        let animationFrameId;
-
-        function animatePlanet(){
-            drawEllipse(centerX, centerY, 0);
-            if(running){  
-                updatePLANET();
-                renderPointPLANET();
-            }
-            console.log(PLANET.degrees + "°");
-            animationFrameId = requestAnimationFrame(animatePlanet);
-        }
-
         document.body.onkeyup = function(e){
             if(e.keyCode == 32){
-                if(running){
-                    running = false;
-                    updatePLANET();
-                    cancelAnimationFrame(animationFrameId)
-                    PLANET.degrees = 0 - PLANET.degreeOffset;
-                    PLANET.day = 1;
-                    updatePLANET();
-                }
-                else if(!running){
-                    running = true;
-                    animationFrameId = requestAnimationFrame(animatePlanet);
-                }
+                timeSlice = orbitalPeriod / 500; // A slice of time (dt) 
+                posX = semiMajorAxis;
+                posY = 0;
+                velocityX = 0;
+                velocityY = Math.sqrt(gravitationalParameter * (2 / (semiMajorAxis - focusDistance) - 1 / semiMajorAxis));
+                console.log(velocityY + " velY go go");
+                updateOrbit();
+                console.log(velocityY + " velY after gogo");
+                console.log(velocityX);
+                console.log("Running");
             }
         }
+
+        launchButton.addEventListener('click', () => {
+            timeSlice = orbitalPeriod / 500; // A slice of time (dt) 
+            posX = semiMajorAxis;
+            posY = 0;
+            velocityX = 0;
+            velocityY = Math.sqrt(gravitationalParameter * (2 / (semiMajorAxis - focusDistance) - 1 / semiMajorAxis));
+            //console.log("gen: " + semiMajorAxis + "smaj, " + semiMinorAxis + "smin");
+            updateOrbit();
+        });
 
 
 
