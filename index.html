@@ -147,6 +147,7 @@
         var minorAxis = canvas.height * 0.4;
         console.log("init: " + semiMajorAxis + "smaj, " + semiMinorAxis + "smin");
         var running = false;
+        var launched = false;
         
 
         var trueEccentricity;
@@ -174,7 +175,7 @@
         console.log(velocityY + " velY");
         // Function to update the position and velocity of the orbiting object
         function updateOrbit() {
-            window.requestAnimationFrame(updateOrbit); // Schedule the next update
+            animationUpdateId = requestAnimationFrame(updateOrbit); // Schedule the next update
             ctx.fillStyle = "rgba(0,0,0,0.5)"
             ctx.fillRect(centerX+posX-1, centerY + posY-1, 6, 6);  // Clear the previous drawing
 
@@ -370,6 +371,7 @@
         }
 
         function generateNextEllipse(){
+            launched = false;
             let xy = generateXY();
             majorAxis = canvas.width * xy.X;
             minorAxis = canvas.height * xy.Y;
@@ -399,6 +401,8 @@
 
             return { X, Y };
         }
+        
+        var animationUpdateId;
 
         function animateRotation() {
             let angle = 0;
@@ -455,6 +459,7 @@
             const decimalRegex = /^0\.\d{3}$/;
             // Parse submitted value to check if it's a number
             if (decimalRegex.test(eccentricityInput)) {
+                cancelAnimationFrame(animationUpdateId);
                 const submittedEccentricity = parseFloat(eccentricityInput);
                 
                 // Calculate the true eccentricity of the ellipse
@@ -464,6 +469,7 @@
                     correctEccentricities++;
                     pointCounter.textContent = correctEccentricities;
                     // Animate rotation
+                    
                     animateRotation();
                 } else {
                     shakeAnimation();
@@ -490,27 +496,33 @@
 
         document.body.onkeyup = function(e){
             if(e.keyCode == 32){
+                if(lauched == false){
+                    timeSlice = orbitalPeriod / 500; // A slice of time (dt) 
+                    posX = semiMajorAxis;
+                    posY = 0;
+                    velocityX = 0;
+                    velocityY = Math.sqrt(gravitationalParameter * (2 / (semiMajorAxis - focusDistance) - 1 / semiMajorAxis));
+                    console.log(velocityY + " velY go go");
+                    updateOrbit();
+                    console.log(velocityY + " velY after gogo");
+                    console.log(velocityX);
+                    console.log("Running");
+                    launched = true;
+                }
+            }
+        }
+
+        launchButton.addEventListener('click', () => {
+            if(launched == false){
                 timeSlice = orbitalPeriod / 500; // A slice of time (dt) 
                 posX = semiMajorAxis;
                 posY = 0;
                 velocityX = 0;
                 velocityY = Math.sqrt(gravitationalParameter * (2 / (semiMajorAxis - focusDistance) - 1 / semiMajorAxis));
-                console.log(velocityY + " velY go go");
+                //console.log("gen: " + semiMajorAxis + "smaj, " + semiMinorAxis + "smin");
                 updateOrbit();
-                console.log(velocityY + " velY after gogo");
-                console.log(velocityX);
-                console.log("Running");
+                launched = true;
             }
-        }
-
-        launchButton.addEventListener('click', () => {
-            timeSlice = orbitalPeriod / 500; // A slice of time (dt) 
-            posX = semiMajorAxis;
-            posY = 0;
-            velocityX = 0;
-            velocityY = Math.sqrt(gravitationalParameter * (2 / (semiMajorAxis - focusDistance) - 1 / semiMajorAxis));
-            //console.log("gen: " + semiMajorAxis + "smaj, " + semiMinorAxis + "smin");
-            updateOrbit();
         });
 
 
