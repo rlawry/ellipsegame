@@ -7,22 +7,28 @@
     <style>
         body {
             background-color: lightSkyBlue;
-            display: flex;
-            justify-content: center;
-            align-items: center;
             height: 100vh;
             margin: 0;
             position: relative;
         }
-        #game{
-            position: relative;
-            width: 800px;
-            height: 800px;
-        }
+
         canvas {
+            
             background-color: black;
             cursor: pointer;
             user-select: none;
+        }
+        .canvas-container {
+            position: relative;
+            left: 50%;
+            top: 50%;
+            -webkit-transform: translate(-50%, -50%);
+            transform: translate(-50%, -50%);
+            justify-content: center;
+            align-items: center;
+            width: 650px;
+            height: 100%;
+            overflow:visible; /* Allows scrolling within the container */
         }
         #controls {
             position:absolute;
@@ -44,7 +50,7 @@
             border-radius: 5px;
             margin-top: 10px;
         }
-        #info {
+        #measurement {
             position: absolute;
             top: 20px;
             right: 20px;
@@ -113,17 +119,19 @@
     </style>
 </head>
 <body>
-    <div id="game">
-        <div id="info">Length: <span id="length">0.0</span> cm</div>
-        <canvas id="drawingCanvas" width="800" height="800"></canvas>
+    <div class="canvas-container">
+        <canvas id="drawingCanvas" width="650" height="650"></canvas>
+        <div id="measurement">Length: <span id="length">0.0</span> cm</div>
         <div id="controls">
             <input type="text" id="eccentricityInput" placeholder="Round to Thousandths">
             <button id="submitEccentricityButton">Submit Eccentricity</button>
         </div>
-        <div id="pointDisplay">Points: <span id="pointCounter">0</span></div>
-        <button id="launchButton">Launch the Satellite</button>
-        <div class="tooltip">Can you tell which focus is empty and at which one there should be a massive object?</div>
     </div>
+
+
+    <div id="pointDisplay">Points: <span id="pointCounter">0</span></div>
+    <button id="launchButton">Launch the Satellite</button>
+    <div class="tooltip">Can you tell which focus is empty and at which one there should be a massive object?</div>
     <script>
         class Point {
             constructor(x, y) {
