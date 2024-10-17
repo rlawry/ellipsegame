@@ -460,8 +460,10 @@
             requestAnimationFrame(shake);
         }
 
-        
+        let isCooldown = false; // Cooldown flag to prevent spamming
+
         function handleEccentricitySubmission(){
+            if (isCooldown) return;
             // Get submitted eccentricity value
             const eccentricityInput = document.getElementById('eccentricityInput').value.trim();
             const decimalRegex = /^0\.\d{3}$/;
@@ -477,7 +479,7 @@
                     correctEccentricities++;
                     pointCounter.textContent = correctEccentricities;
                     // Animate rotation
-                    
+                    disableSubmitButton(2000);
                     animateRotation();
                 } else {
                     shakeAnimation();
@@ -501,6 +503,18 @@
                 handleEccentricitySubmission();
             }
         });
+
+        function disableSubmitButton(delay) {
+            let submitButton = document.getElementById("submitEccentricityButton");
+            submitButton.disabled = true;
+            isCooldown = true;
+
+            // Re-enable the button after the delay
+            setTimeout(() => {
+                submitButton.disabled = false;
+                isCooldown = false;
+            }, delay);
+        }
 
         document.body.onkeyup = function(e){
             if(e.keyCode == 32){
